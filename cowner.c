@@ -1,46 +1,19 @@
 #include <stdio.h>
-#include <stdlib.h>
-#include <unistd.h>
 #include <sys/stat.h>
 #include <pwd.h>
-
-/*
- * cowner <fichier> <nouveau_proprietaire>
- * Change le propriétaire d'un fichier (nécessite sudo ou être root)
- * Utilise : chown(path, uid, gid) avec getpwnam()
- */
+#include <unistd.h>
 
 int main(int argc, char *argv[]) {
-    if (argc != 3) {
-        fprintf(stderr, "Usage: %s <fichier> <nouveau_proprietaire>\n", argv[0]);
-        return 1;
-    }
-
-    const char *fichier = argv[1];
-    const char *user    = argv[2];
-
-    // Récupérer le UID de l'utilisateur (getpwnam)
-    struct passwd *pw = getpwnam(user);
-    if (!pw) {
-        fprintf(stderr, "cowner: utilisateur '%s' introuvable\n", user);
-        return 1;
-    }
-
-    // Récupérer le GID actuel du fichier (pour ne pas le changer)
     struct stat st;
-    if (stat(fichier, &st) == -1) {
-        perror("stat");
-        return 1;
-    }
+    struct passwd *pw;
 
-    // Changer uniquement le propriétaire (gid inchangé)
-    if (chown(fichier, pw->pw_uid, st.st_gid) == -1) {
-        perror("chown (cowner)");
-        fprintf(stderr, "Conseil: relancez avec sudo si permission refusée\n");
-        return 1;
-    }
+    if (argc != 3) { fprintf(stderr, "Usage: %s <fichier> <user>\n", argv[0]); return 1; }
+    if (stat(argv[1], &st) == -1) { perror("stat"); return 1; }
 
-    printf("Propriétaire de '%s' changé en : %s (uid=%d)\n",
-           fichier, user, pw->pw_uid);
+    pw = getpwnam(argv[2]);
+    if (!pw) { fprintf(stderr, "User '%s' introuvable\n", argv[2]); return 1; }
+
+    if (chown(argv[1], pw->pw_uid, st.st_gid) == -1) { perror("chown"); return 1; }
+    printf("Owner de '%s' -> %s\n", argv[1], argv[2]);
     return 0;
 }
